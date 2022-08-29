@@ -1,0 +1,25 @@
+{
+  "name": "@mrubiosan/context",
+  "version": "0.1.0",
+  "description": "Context cancellation for long lived functions",
+  "main": "lib/context.js",
+  "scripts": {
+    "lint": "eslint *.ts",
+    "build": "tsc",
+    "test": "jest",
+    "prepack": "npm run build && npm run test"
+  },
+  "author": "Marc Rubio",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^28.1.8",
+    "@typescript-eslint/eslint-plugin": "^5.35.1",
+    "@typescript-eslint/parser": "^5.35.1",
+    "eslint": "~8.22.0",
+    "jest": "^28.1.3",
+    "ts-jest": "^28.0.8"
+  },
+  "files": [
+    "lib"
+  ]
+}
