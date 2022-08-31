@@ -1,8 +1,13 @@
-import RootContext, { Cancel } from './context'
-import { after } from './time'
+import { RootContext, Context, Cancel } from './context'
 import { Canceled, DeadlineExceeded } from './error'
 
 jest.useFakeTimers()
+
+function after(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms).unref()
+  })
+}
 
 describe.each([
   ['RootContext', RootContext],
@@ -37,7 +42,7 @@ describe.each([
   ['RootContext.withCancel', ...RootContext.withCancel()],
   ['RootContext.withTimeout', ...RootContext.withTimeout(1000)],
   ['RootContext.withDeadline', ...RootContext.withDeadline(new Date(Date.now() + 1000))],
-])('Canceled %s', (_, ctx: typeof RootContext, cancel: Cancel) => {
+])('Canceled %s', (_, ctx: Context, cancel: Cancel) => {
   beforeEach(() => {
     cancel()
   })
@@ -66,5 +71,27 @@ describe('Context.withDeadline', () => {
     const now = new Date()
     const [ctx] = RootContext.withDeadline(now)
     await expect(ctx.err()).resolves.toBeInstanceOf(DeadlineExceeded)
+  })
+})
+
+describe('Context.withTimeout', () => {
+  it('rejects after given time has passed', async () => {
+    const [ctx] = RootContext.withTimeout(100)
+    jest.advanceTimersByTime(100)
+    await expect(ctx.err()).resolves.toBeInstanceOf(DeadlineExceeded)
+  })
+})
+
+describe('Context.toAbortSignal', () => {
+  it('creates a context bound AbortSignal', async () => {
+    const [ctx, cancel] = RootContext.withCancel()
+    const signal = ctx.toAbortSignal()
+    expect(signal.aborted).toBe(false)
+
+    cancel()
+    await ctx.done()
+    expect(signal.aborted).toBe(true)
+    // @ts-ignore
+    expect(signal.reason).toBeInstanceOf(Canceled)
   })
 })

@@ -1,5 +1,4 @@
 import { Canceled, ContextError, DeadlineExceeded } from './error'
-import { after } from './time'
 
 type Cancel = () => void;
 type Reject = (arg0: any) => void;
@@ -42,9 +41,18 @@ class Context {
   withTimeout(timeout: number): [Context, Cancel] {
     const [done, cancel] = buildPromise()
     this.p.catch((e) => { cancel(e) })
-    after(timeout).then(() => { cancel(new DeadlineExceeded()) })
 
-    return [new Context(done), () => { cancel(new Canceled()) }]
+    const timer = setTimeout(() => {
+      cancel(new DeadlineExceeded())
+    }, timeout)
+
+    return [
+      new Context(done),
+      () => {
+        clearTimeout(timer)
+        cancel(new Canceled())
+      }
+    ]
   }
 
   withDeadline(deadline: Date): [Context, Cancel] {
@@ -56,7 +64,20 @@ class Context {
 
     return this.withTimeout(diff)
   }
+
+  toAbortSignal(): AbortSignal {
+    const controller = new AbortController()
+    this.p.catch((e) => {
+      // @ts-ignore
+      controller.abort(e)
+    })
+    return controller.signal
+  }
 }
 
-export default new Context(new Promise(() => undefined))
-export { Cancel }
+export const RootContext = new Context(new Promise(() => undefined))
+type ContextType = InstanceType<typeof Context>;
+export {
+  Cancel,
+  ContextType as Context,
+}
