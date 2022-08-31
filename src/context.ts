@@ -8,6 +8,7 @@ function buildPromise(): [Promise<never>, Reject] {
   const done = new Promise<never>((_, reject) => {
     cancel = reject
   })
+  // The Promise executor is run synchronously as per ECMAScript spec. So cancel is guaranteed to be set.
   // @ts-ignore
   return [done, cancel]
 }
@@ -19,18 +20,30 @@ class Context {
     this.p = done
   }
 
+  /**
+   * Resolves when the context has been canceled.
+   */
   done(): Promise<void> {
     return this.p.catch(() => undefined)
   }
 
+  /**
+   * Resolves when the context has been canceled with the reason why.
+   */
   err(): Promise<ContextError> {
     return this.p.catch((e) => e)
   }
 
+  /**
+   * Rejects if the context is canceled before _p_ is resolved.
+   */
   race<T>(p: Promise<T>): Promise<Awaited<T>> {
     return Promise.race([this.p, p]) as Promise<Awaited<T>>
   }
 
+  /**
+   * Creates a new child cancelable context. If the parent is canceled it cascades.
+   */
   withCancel(): [Context, Cancel] {
     const [done, cancel] = buildPromise()
     this.p.catch((e) => { cancel(e) })
@@ -38,6 +51,10 @@ class Context {
     return [new Context(done), () => { cancel(new Canceled()) }]
   }
 
+  /**
+   * Creates a new child cancelable context, which auto-cancels after the given timeout.
+   * If the parent is canceled it cascades.
+   */
   withTimeout(timeout: number): [Context, Cancel] {
     const [done, cancel] = buildPromise()
     this.p.catch((e) => { cancel(e) })
@@ -55,6 +72,10 @@ class Context {
     ]
   }
 
+  /**
+   * Creates a new child cancelable context, which auto-cancels after the given deadline passes.
+   * If the parent is canceled it cascades.
+   */
   withDeadline(deadline: Date): [Context, Cancel] {
     const now = Date.now()
     const diff = deadline.getTime() - now
@@ -65,9 +86,13 @@ class Context {
     return this.withTimeout(diff)
   }
 
+  /**
+   * Utility method to convert the context into an AbortSignal.
+   */
   toAbortSignal(): AbortSignal {
     const controller = new AbortController()
     this.p.catch((e) => {
+      // The abort method does not always accept a parameter, but it's fine to pass it anyway.
       // @ts-ignore
       controller.abort(e)
     })
