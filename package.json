@@ -4,7 +4,7 @@
   "description": "Context cancellation for long lived functions",
   "main": "lib/context.js",
   "scripts": {
-    "lint": "eslint *.ts",
+    "lint": "eslint src",
     "build": "tsc",
     "test": "jest",
     "prepack": "npm run build && npm run test"

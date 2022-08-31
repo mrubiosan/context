@@ -39,5 +39,6 @@
     "node_modules",
     "**/*.spec.ts",
     "lib"
-  ]
+  ],
+  "include": ["src/**/*.ts"]
 }
