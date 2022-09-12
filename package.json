@@ -2,6 +2,12 @@
   "name": "@mrubiosan/context",
   "version": "0.1.0",
   "description": "Context cancellation for long lived functions",
+  "keywords": [
+    "go",
+    "context",
+    "task",
+    "promises"
+  ],
   "main": "lib/context.js",
   "scripts": {
     "lint": "eslint src",
@@ -11,6 +17,11 @@
   },
   "author": "Marc Rubio",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrubiosan/context"
+  },
+  "homepage": "https://github.com/mrubiosan/context",
   "devDependencies": {
     "@types/jest": "^28.1.8",
     "@typescript-eslint/eslint-plugin": "^5.35.1",
