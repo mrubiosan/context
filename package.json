@@ -1,6 +1,6 @@
 {
   "name": "@mrubiosan/context",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Context cancellation for long lived functions",
   "keywords": [
     "go",
