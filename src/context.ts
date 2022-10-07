@@ -1,12 +1,12 @@
 import { Canceled, ContextError, DeadlineExceeded } from './error'
 
 type Cancel = () => void;
-type Reject = (arg0: any) => void;
+type Resolve = (error: ContextError) => void;
 
-function buildPromise(): [Promise<never>, Reject] {
-  let cancel: Reject
-  const done = new Promise<never>((_, reject) => {
-    cancel = reject
+function buildPromise(): [Promise<ContextError>, Resolve] {
+  let cancel: Resolve
+  const done = new Promise((resolve) => {
+    cancel = resolve
   })
   // The Promise executor is run synchronously as per ECMAScript spec. So cancel is guaranteed to be set.
   // @ts-ignore
@@ -14,9 +14,9 @@ function buildPromise(): [Promise<never>, Reject] {
 }
 
 class Context {
-  private readonly p: Promise<never>
+  private readonly p: Promise<ContextError>
 
-  constructor(done: Promise<never>) {
+  constructor(done: Promise<ContextError | never>) {
     this.p = done
   }
 
@@ -24,21 +24,21 @@ class Context {
    * Resolves when the context has been canceled.
    */
   done(): Promise<void> {
-    return this.p.catch(() => undefined)
+    return this.p.then(() => undefined)
   }
 
   /**
    * Resolves when the context has been canceled with the reason why.
    */
   err(): Promise<ContextError> {
-    return this.p.catch((e) => e)
+    return this.p
   }
 
   /**
    * Rejects if the context is canceled before _p_ is resolved.
    */
   race<T>(p: Promise<T>): Promise<Awaited<T>> {
-    return Promise.race([this.p, p]) as Promise<Awaited<T>>
+    return Promise.race([this.p.then(e => Promise.reject(e)), p]) as Promise<Awaited<T>>
   }
 
   /**
@@ -46,7 +46,7 @@ class Context {
    */
   withCancel(): [Context, Cancel] {
     const [done, cancel] = buildPromise()
-    this.p.catch((e) => { cancel(e) })
+    this.p.then((e) => { cancel(e) })
 
     return [new Context(done), () => { cancel(new Canceled()) }]
   }
@@ -57,7 +57,7 @@ class Context {
    */
   withTimeout(timeout: number): [Context, Cancel] {
     const [done, cancel] = buildPromise()
-    this.p.catch((e) => { cancel(e) })
+    this.p.then((e) => { cancel(e) })
 
     const timer = setTimeout(() => {
       cancel(new DeadlineExceeded())
@@ -80,7 +80,7 @@ class Context {
     const now = Date.now()
     const diff = deadline.getTime() - now
     if (diff <= 0) {
-      return [new Context(Promise.reject(new DeadlineExceeded())), () => undefined]
+      return [new Context(Promise.resolve(new DeadlineExceeded())), () => undefined]
     }
 
     return this.withTimeout(diff)
@@ -91,7 +91,7 @@ class Context {
    */
   toAbortSignal(): AbortSignal {
     const controller = new AbortController()
-    this.p.catch((e) => {
+    this.p.then((e) => {
       // The abort method does not always accept a parameter, but it's fine to pass it anyway.
       // @ts-ignore
       controller.abort(e)
